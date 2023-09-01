@@ -1,4 +1,4 @@
-import connect.connect as cc
+
 import sys
 import datetime
 import pymssql
@@ -14,6 +14,7 @@ warnings.filterwarnings('ignore')
 sys.path.append('/home/cim')
 
 # connector
+import connect.connect as cc
 
 eng_mes = cc.connect('MES', 'MES_Test')
 # con_cim = cc.connect('CIM', 'SAP_WKTIME')
