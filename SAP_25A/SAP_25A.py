@@ -23,8 +23,8 @@ eng_sap = cc.connect('SAP', 'SAP_TEST')
 
 cur = eng_sap.cursor()
 
-
-# In[1]:
+DB = "MES_Production"
+DB = "MES_Test"
 
 
 def sql_str(table, cols):
@@ -64,11 +64,11 @@ def UPDATESTATUS(MANDT):
     
     if(len(check_date)>0):
 	    startdat = check_date['STARTDAT'][0]
-	    enddat = check_date['ENDDAT'][0]
+        enddat = check_date['ENDDAT'][0]   
 
 	    
 	    #篩選CIM等待交易的AUFNR
-	    sql = "SELECT * FROM `sap_wktime`.`sap_25a` WHERE `MANDT` = '"+MANDT+"' AND `STATUS` = '001'"
+        sql = "SELECT * FROM `sap_wktime`.`sap_25a` WHERE `MANDT` = '"+MANDT+"' AND `STATUS` = '001'"
 	    cim_log = pd.read_sql_query(sql, eng_cim)
 
 
@@ -121,10 +121,10 @@ def UPDATESTATUS(MANDT):
 
 def READ_MES(MANDT):
     # 撈取指定MO過帳紀錄
-    sql = "EXECUTE MES_TEST.dbo.SAP_25A_ALL @BEGIN='"+BEGIN+"',@END='"+END+"'"
+    sql = "EXECUTE "+DB+".dbo.SAP_25A_ALL @BEGIN='"+BEGIN+"',@END='"+END+"'"
     df_25A = pd.read_sql(sql, eng_mes)
 
-    sql = "EXECUTE MES_TEST.dbo.SAP_25B_ALL @BEGIN='"+BEGIN+"',@END='"+END+"'"
+    sql = "EXECUTE "+DB+".dbo.SAP_25B_ALL @BEGIN='"+BEGIN+"',@END='"+END+"'"
     df_25B = pd.read_sql(sql, eng_mes)
 
     AUFNR_LIST =df_25A["AUFNR"].tolist()
