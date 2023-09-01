@@ -16,7 +16,7 @@ con_mes = cc.connect('MES', 'MES_Test')
 con_cim = cc.connect('CIM', 'SAP_WKTIME')
 con_sap = cc.connect('SAP', 'SAP_TEST')
 
-cur = con_sap.cursor()
+#cur = con_sap.cursor()
 
 
 # In[1]:
@@ -40,7 +40,7 @@ def sql_str(table, cols):
     return sql
 
 
-def sql_val(sql, df, cur, con_sap):
+def sql_val(sql, df, con_sap):
     for j in range(0, len(df["IDBSNO"])):
         bindVar = {}
         for i, v in enumerate(df):
@@ -48,7 +48,7 @@ def sql_val(sql, df, cur, con_sap):
             bindVar.update(b)
 #         print(sql)
 #         print(bindVar)
-        cur.execute(sql, bindVar)
+        con_sap.execute(sql, bindVar)
         con_sap.commit()
 
 
@@ -85,9 +85,6 @@ def UPDATESTATUS(MANDT):
     sap_result = pd.read_sql_query(sql, con_sap)
     #更改RMZHL格式為INT64(配合CIM)
     sap_result['RMZHL'] = sap_result['RMZHL'].astype('int64')
-
-
-    # In[3]:
 
 
     #合併兩表
@@ -189,7 +186,7 @@ def READ_MES(MANDT):
 
 #取出時間區間
 now = datetime.datetime.now()
-# now = datetime.datetime(2023,8,24,1,10,0)
+now = datetime.datetime(2023,8,30,1,10,0)
 BEGIN = now + datetime.timedelta(days=-1)
 BEGIN = BEGIN.strftime('%Y-%m-%d')+' 00:00:00'
 END = now.strftime('%Y-%m-%d')+' 00:00:00'
@@ -300,11 +297,11 @@ for i,v in enumerate(AUFNR_LIST):
             # 拋給SAP
             cols = dfa_.columns.tolist()            
             sql = sql_str('thsap.ZPPT0025A', cols)
-            sql_val(sql, dfa_, cur, con_sap)
+            sql_val(sql, dfa_, con_sap)
 
             cols = dfb_.columns.tolist()
             sql = sql_str('thsap.ZPPT0025B', cols)
-            sql_val(sql, dfb_, cur, con_sap)
+            sql_val(sql, dfb_, con_sap)
 
             cols = dfc_.columns.tolist()
             sql = sql_str('thsap.ZPPT0025C1', cols)
@@ -312,7 +309,7 @@ for i,v in enumerate(AUFNR_LIST):
             dfc_.drop_duplicates(subset=[
                                     'IDBSNO', 'WERKS', 'AUFNR', 'VORNR', 'RMZHL', 'GETDAT', 'EXETYP', 'MANDT'], inplace=True)
             dfc_.reset_index(drop=True,inplace=True)
-            sql_val(sql, dfc_, cur, con_sap)
+            sql_val(sql, dfc_, con_sap)
 
             # 拋給cim=>等待交易結果
             cim_25A["EXETYP"] = "A"
