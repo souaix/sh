@@ -6,6 +6,9 @@ import pyodbc
 import requests
 import time
 
+import warnings
+warnings.filterwarnings('ignore')
+
 import sys
 sys.path.append('/home/cim')
 
@@ -196,7 +199,7 @@ else:
     LAST_OUTDAT = LAST_PDADAT
 
 
-
+# LAST_PDADAT='2023-08-20 00:00:00'
 sql = "SELECT PARAMETERVALUE FROM TBLSYSPARAMETER WHERE PARAMETERNO = 'SAP_MANDT'"
 MANDT = pd.read_sql(sql,eng_mes)["PARAMETERVALUE"][0]
 
