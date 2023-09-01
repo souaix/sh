@@ -12,17 +12,16 @@ sys.path.append('/home/cim')
 # connector
 import connect.connect as cc
 
-con_mes = cc.connect('MES', 'MES_Test')
+eng_mes = cc.connect('MES', 'MES_Test')
 # con_cim = cc.connect('CIM', 'SAP_WKTIME')
-con_sap = cc.connect('SAP', 'SAP_TEST')
-cur=con_sap.cursor()
+eng_sap = cc.connect('SAP', 'SAP_TEST')
+cur=eng_sap.cursor()
 
 
 #ORACLE FUNCTION
 def sql_str(table,cols):
     sql = "INSERT INTO "+table +"("
     
-    cols_str = ""
     for i,v in enumerate(cols):                    
         sql = sql + v +","
     sql = sql[0:-1]+") VALUES(" 
@@ -36,7 +35,7 @@ def sql_str(table,cols):
     
     return sql
     
-def sql_val(sql,df,cur,con_sap):
+def sql_val(sql,df,cur,eng_sap):
     for j in range(0,len(df["IDBSNO"])):
         bindVar={}
         for i,v in enumerate(df):
@@ -46,7 +45,7 @@ def sql_val(sql,df,cur,con_sap):
 #             print(sql)
 #         print(bindVar)            
         cur.execute(sql,bindVar)
-        con_sap.commit()    
+        eng_sap.commit()    
         print('commited')
 
 
@@ -60,10 +59,10 @@ def CLOSEMO(IDBSNO,AUFNR,MANDT):
     #撈取指定MO過帳紀錄
     sql ="EXECUTE MES_Test.dbo.SAP_28A_AUFNR @IDBSNO='"+IDBSNO+"',@AUFNR='"+AUFNR+"',@MANDT='"+MANDT+"'"
     
-    df_28A = pd.read_sql(sql,con_mes)
+    df_28A = pd.read_sql(sql,eng_mes)
 
     sql ="EXECUTE MES_Test.dbo.SAP_28B1_AUFNR @IDBSNO='"+IDBSNO+"',@AUFNR='"+AUFNR+"',@MANDT='"+MANDT+"'"
-    df_28B1 = pd.read_sql(sql,con_mes)   
+    df_28B1 = pd.read_sql(sql,eng_mes)   
     
     return df_28A,df_28B1    
     
@@ -180,7 +179,7 @@ def send_xml(xml_data):
 
 #取最後MES拋轉入庫時間
 sql = "SELECT top(1) GETDAT FROM MES_Test.dbo.TH_SAPSTOCK_LOG WHERE STATUS ='SUCCESS' AND DIRECT ='IN' ORDER BY GETDAT DESC"
-df_log = pd.read_sql(sql,con_mes)
+df_log = pd.read_sql(sql,eng_mes)
 if len(df_log)>0:
     LAST_PDADAT = df_log['GETDAT'][0]
     LAST_PDADAT = LAST_PDADAT.strftime("%Y-%m-%d %H:%M:%S")
@@ -189,7 +188,7 @@ else:
     print("NO LAST PDADAT")
 #取最後SAP拋轉退庫時間
 sql = "SELECT top(1) GETDAT FROM MES_Test.dbo.TH_SAPSTOCK_LOG WHERE STATUS ='SUCCESS' AND DIRECT ='OUT' ORDER BY GETDAT DESC"
-df_log = pd.read_sql(sql,con_mes)
+df_log = pd.read_sql(sql,eng_mes)
 if len(df_log)>0:
     LAST_OUTDAT = df_log['GETDAT'][0]
     LAST_OUTDAT = LAST_OUTDAT.strftime("%Y-%m-%d %H:%M:%S")
@@ -199,7 +198,7 @@ else:
 
 
 sql = "SELECT PARAMETERVALUE FROM TBLSYSPARAMETER WHERE PARAMETERNO = 'SAP_MANDT'"
-MANDT = pd.read_sql(sql,con_mes)["PARAMETERVALUE"][0]
+MANDT = pd.read_sql(sql,eng_mes)["PARAMETERVALUE"][0]
 
 
 
@@ -238,7 +237,7 @@ SELECT * FROM (
 	) PACK GROUP BY AUFNR,ZZTB_NO,GETDAT,DIRECT
 ) WHERE GETDAT IS NOT NULL ORDER BY GETDAT 
 '''
-df_pda = pd.read_sql(sql,con_sap)
+df_pda = pd.read_sql(sql,eng_sap)
 
 # 非PDA入庫
 sql ='''
@@ -262,7 +261,7 @@ SELECT AUFNR,ZZSUBLOT,ZZTB_NO,ZZCUST_LOT FROM
 ) PACK	
 GROUP BY ZZSUBLOT,ZZTB_NO,ZZCUST_LOT,AUFNR
 '''
-df_nonpda = pd.read_sql(sql,con_sap)
+df_nonpda = pd.read_sql(sql,eng_sap)
 
 if(len(df_pda)>0):
 
@@ -381,7 +380,7 @@ if(len(df_pda)>0):
                 time.sleep(1)
                 
                 sql = "SELECT MOSTATE FROM MES_Test.dbo.TBLOEMOBASIS WHERE AUFNR = '"+aufnr+"'"
-                mostate = pd.read_sql(sql,con_mes)
+                mostate = pd.read_sql(sql,eng_mes)
                 mostate = mostate["MOSTATE"][0]
                 
                 if mostate ==99 and aufnr not in ARDY_IN:
@@ -393,7 +392,7 @@ if(len(df_pda)>0):
                     sql = sql_str('thsap.ZPPT0028A',cols)
                     
                     try:
-                        sql_val(sql,df_28A,cur,con_sap)        
+                        sql_val(sql,df_28A,cur,eng_sap)        
                     except:
                         df_fail_in_["NODE"]="28A"
                         df_fail_in_ = pd.concat([df_fail_in,df_fail_in_])                        
@@ -403,7 +402,7 @@ if(len(df_pda)>0):
                     sql = sql_str('thsap.ZPPT0028B1',cols)
                     
                     try:
-                        sql_val(sql,df_28B1,cur,con_sap)                                    
+                        sql_val(sql,df_28B1,cur,eng_sap)                                    
                     except:                        
                         df_fail_in_["NODE"]="28B"
                         df_fail_in_ = pd.concat([df_fail_in,df_fail_in_])    
@@ -464,10 +463,10 @@ if(len(df_pda)>0):
     except:
         print('no index')
        
-    df_success_in.to_sql('TH_SAPSTOCK_LOG', con=con_mes, if_exists='append', index=False)
-    df_success_out.to_sql('TH_SAPSTOCK_LOG', con=con_mes, if_exists='append', index=False)
-    df_fail_in.to_sql('TH_SAPSTOCK_LOG', con=con_mes, if_exists='append', index=False)
-    df_fail_out.to_sql('TH_SAPSTOCK_LOG', con=con_mes, if_exists='append', index=False)
+    df_success_in.to_sql('TH_SAPSTOCK_LOG', con=eng_mes, if_exists='append', index=False)
+    df_success_out.to_sql('TH_SAPSTOCK_LOG', con=eng_mes, if_exists='append', index=False)
+    df_fail_in.to_sql('TH_SAPSTOCK_LOG', con=eng_mes, if_exists='append', index=False)
+    df_fail_out.to_sql('TH_SAPSTOCK_LOG', con=eng_mes, if_exists='append', index=False)
 
 else :
     print('無終段工單入退庫資料')
@@ -482,21 +481,21 @@ if(len(df_nonpda) > 0):
             df_28A,df_28B1 = CLOSEMO(idbsno,v,MANDT)
             cols =df_28A.columns.tolist()
             sql = sql_str('thsap.ZPPT0028A',cols)
-            sql_val(sql,df_28A,cur,con_sap)        
+            sql_val(sql,df_28A,cur,eng_sap)        
 
             cols =df_28B1.columns.tolist()
             sql = sql_str('thsap.ZPPT0028B1',cols)
-            sql_val(sql,df_28B1,cur,con_sap)          
+            sql_val(sql,df_28B1,cur,eng_sap)          
 
 else :
     print('無前段工單入庫資料')
 
 
 # con_cim.dispose()
-con_mes.dispose()
-# con_sap.dispose()
+eng_mes.dispose()
+# eng_sap.dispose()
 
-# con_mes.close()
+# eng_mes.close()
 # con_cim.close()
 # cur.close()
 
