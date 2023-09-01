@@ -63,61 +63,60 @@ def UPDATESTATUS(MANDT):
     check_date = pd.read_sql_query(sql, eng_cim)
     
     if(len(check_date)>0):
-	    startdat = check_date['STARTDAT'][0]
+        startdat = check_date['STARTDAT'][0]
         enddat = check_date['ENDDAT'][0]   
 
 	    
-	    #篩選CIM等待交易的AUFNR
+        #篩選CIM等待交易的AUFNR
         sql = "SELECT * FROM `sap_wktime`.`sap_25a` WHERE `MANDT` = '"+MANDT+"' AND `STATUS` = '001'"
-	    cim_log = pd.read_sql_query(sql, eng_cim)
+        cim_log = pd.read_sql_query(sql, eng_cim)
 
 
-	    # In[2]:
+        #篩選SAP BUDAT區間的交易結果
+
+        sql = '''
+        SELECT IDBSNO,AUFNR,RMZHL,MANDT,BUDAT,EXETYP,CASE WHEN SUM(SAP_RESULT)> 0 THEN 'E' ELSE 'F' END AS SAP_RESULT
+        FROM (
+            SELECT a.IDBSNO,a.AUFNR,a.RMZHL,a.MANDT,c.BUDAT,a.EXETYP,CASE WHEN a.STSTYP = 'F' THEN 0 ELSE 1 END AS SAP_RESULT 
+            FROM SAPS4.ZPPT0025C2 a
+        LEFT JOIN (
+            SELECT * FROM THSAP.ZPPT0025A) c 
+        ON a.IDBSNO = c.IDBSNO AND a.AUFNR = c.AUFNR AND a.WERKS = c.WERKS AND a.RMZHL = c.RMZHL AND a.VORNR = c.VORNR
+        WHERE a.WERKS = '1031' AND a.MANDT = \'''' + MANDT + '''\'
+        AND (c.BUDAT >= \'''' + startdat + '''\' AND c.BUDAT <= \'''' + enddat + '''\')
+        ) ff 
+        GROUP BY IDBSNO,AUFNR,RMZHL,MANDT,BUDAT,EXETYP
+        '''
 
 
-	    #篩選SAP BUDAT區間的交易結果
-	    sql = '''
-		    SELECT IDBSNO,AUFNR,RMZHL,MANDT,BUDAT,EXETYP,CASE WHEN SUM(SAP_RESULT)> 0 THEN 'E' ELSE 'F' END AS SAP_RESULT
-		    FROM (
-		    SELECT a.IDBSNO,a.AUFNR,a.RMZHL,a.MANDT,c.BUDAT,a.EXETYP,CASE WHEN a.STSTYP = 'F' THEN 0 ELSE 1 END AS SAP_RESULT 
-		    FROM SAPS4.ZPPT0025C2 a
-		    LEFT JOIN (
-		        SELECT * FROM THSAP.ZPPT0025A
-		    ) c ON a.IDBSNO = c.IDBSNO AND a.AUFNR = c.AUFNR AND a.WERKS = c.WERKS AND a.RMZHL = c.RMZHL AND a.VORNR = c.VORNR
-		    WHERE a.WERKS = '1031' AND a.MANDT = \'''' + MANDT + '''\'
-		    AND (c.BUDAT >= \'''' + startdat + '''\' AND c.BUDAT <= \'''' + enddat + '''\')
-		    ) ff 
-		    GROUP BY IDBSNO,AUFNR,RMZHL,MANDT,BUDAT,EXETYP
-
-		'''
 		
-	    sap_result = pd.read_sql(sql, eng_sap)
-	    
-	    if(len(sap_result)>0):
+        sap_result = pd.read_sql(sql, eng_sap)
+
+        if(len(sap_result)>0):
 	   
-		    #更改RMZHL格式為INT64(配合CIM)
-		    sap_result['RMZHL'] = sap_result['RMZHL'].astype('int64')
+            #更改RMZHL格式為INT64(配合CIM)
+            sap_result['RMZHL'] = sap_result['RMZHL'].astype('int64')
 
 
-		    #合併兩表
-		    cim_result = cim_log.merge(sap_result, left_on=['IDBSNO','AUFNR','RMZHL','BUDAT','MANDT','EXETYP'], right_on=['IDBSNO','AUFNR','RMZHL','BUDAT','MANDT','EXETYP'], how='left')
-		    #根據SAP交易結果判斷CIM STATUS欄位
-		    cim_result['STATUS'] = cim_result['SAP_RESULT'].map(lambda x:'003' if x=='F' else('002' if x=='E' else '001'))
-		    #刪除SAP_RESULT欄位
-		    cim_result = cim_result.drop(['SAP_RESULT'], axis=1)
+            #合併兩表
+            cim_result = cim_log.merge(sap_result, left_on=['IDBSNO','AUFNR','RMZHL','BUDAT','MANDT','EXETYP'], right_on=['IDBSNO','AUFNR','RMZHL','BUDAT','MANDT','EXETYP'], how='left')
+            #根據SAP交易結果判斷CIM STATUS欄位
+            cim_result['STATUS'] = cim_result['SAP_RESULT'].map(lambda x:'003' if x=='F' else('002' if x=='E' else '001'))
+            #刪除SAP_RESULT欄位
+            cim_result = cim_result.drop(['SAP_RESULT'], axis=1)
 
 
-		    #存入CIM暫存表
-		    cim_result.to_sql('sap_25a_temp', con=eng_cim, if_exists='replace', index=False)
+            #存入CIM暫存表
+            cim_result.to_sql('sap_25a_temp', con=eng_cim, if_exists='replace', index=False)
 
-		    #更新 sap_25a.STATUS
-		    
-		    sql = "REPLACE into sap_25a (SELECT * FROM sap_25a_temp)"
+            #更新 sap_25a.STATUS
 
-		    con_cim = eng_cim.connect()		   
-		    con_cim.execute(text(sql))
-		    con_cim.commit()
-		   
+            sql = "REPLACE into sap_25a (SELECT * FROM sap_25a_temp)"
+
+            con_cim = eng_cim.connect()		   
+            con_cim.execute(text(sql))
+            con_cim.commit()
+
 
 def READ_MES(MANDT):
     # 撈取指定MO過帳紀錄
@@ -206,16 +205,16 @@ MANDT = pd.read_sql(sql,eng_mes)["PARAMETERVALUE"][0]
 
 #更新狀態
 
-try:
-    print('更新CIM LOG狀態')
-    UPDATESTATUS(MANDT)
-except Exception as e:
-    print('更新CIM LOG狀態失敗')
-    print(e)
+# try:
+#     print('更新CIM LOG狀態')
+#     UPDATESTATUS(MANDT)
+# except Exception as e:
+#     print('更新CIM LOG狀態失敗')
+#     print(e)
 
 
 
-#UPDATESTATUS(MANDT)
+UPDATESTATUS(MANDT)
 
 print(BEGIN+'~~~'+END)
 print("MANDT:"+MANDT)
