@@ -63,8 +63,9 @@ def UPDATESTATUS(MANDT):
     check_date = pd.read_sql_query(sql, eng_cim)
     
     if(len(check_date)>0):
-        startdat = check_date['STARTDAT'][0]
-        enddat = check_date['ENDDAT'][0]   
+
+        startdat = str(check_date['STARTDAT'][0])
+        enddat = str(check_date['ENDDAT'][0])
 
 	    
         #篩選CIM等待交易的AUFNR
@@ -201,7 +202,7 @@ END = now.strftime('%Y-%m-%d')+' 00:00:00'
 
 #
 sql = "SELECT PARAMETERVALUE FROM TBLSYSPARAMETER WHERE PARAMETERNO = 'SAP_MANDT'"
-MANDT = pd.read_sql(sql,eng_mes)["PARAMETERVALUE"][0]
+MANDT = str(pd.read_sql(sql,eng_mes)["PARAMETERVALUE"][0])
 
 #更新狀態
 
@@ -211,7 +212,6 @@ MANDT = pd.read_sql(sql,eng_mes)["PARAMETERVALUE"][0]
 # except Exception as e:
 #     print('更新CIM LOG狀態失敗')
 #     print(e)
-
 
 
 UPDATESTATUS(MANDT)
