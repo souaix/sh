@@ -17,14 +17,14 @@ sys.path.append('/home/cim')
 # connector
 import connect.connect as cc
 
-eng_mes = cc.connect('MES', 'MES_Test')
-eng_cim = cc.connect('CIM', 'SAP_WKTIME')
-eng_sap = cc.connect('SAP', 'SAP_TEST')
+eng_mes = cc.connect('MES', 'MES_Production')
+eng_cim = cc.connect('CIM_ubuntu', 'SAP_WKTIME')
+eng_sap = cc.connect('SAP', 'SAP_PRD')
 
 cur = eng_sap.cursor()
 
 DB = "MES_Production"
-DB = "MES_Test"
+#DB = "MES_Test"
 
 
 def sql_str(table, cols):

@@ -16,13 +16,13 @@ sys.path.append('/home/cim')
 # connector
 import connect.connect as cc
 
-eng_mes = cc.connect('MES', 'MES_Test')
+eng_mes = cc.connect('MES', 'MES_Production')
 # con_cim = cc.connect('CIM', 'SAP_WKTIME')
-eng_sap = cc.connect('SAP', 'SAP_TEST')
+eng_sap = cc.connect('SAP', 'SAP_PRD')
 cur = eng_sap.cursor()
 
 DB = "MES_Production"
-DB = "MES_Test"
+# DB = "MES_Test"
 
 # ORACLE FUNCTION
 
