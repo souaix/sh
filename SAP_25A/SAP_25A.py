@@ -18,7 +18,7 @@ sys.path.append('/home/cim')
 import connect.connect as cc
 
 eng_mes = cc.connect('MES', 'MES_Production')
-eng_cim = cc.connect('CIM_ubuntu', 'SAP_WKTIME')
+eng_cim = cc.connect('CIM_ubuntu', 'sap_wktime')
 eng_sap = cc.connect('SAP', 'SAP_PRD')
 
 cur = eng_sap.cursor()
@@ -268,7 +268,7 @@ for i,v in enumerate(AUFNR_LIST):
     if( (EXETYP_=='C' and STATUS_=='003') or (EXETYP_=='A' and (STATUS_=='002' or STATUS_=='004') ) or (EXETYP_=='' and STATUS_=='') ):
         time.sleep(1)
         # 取RMZHL歷史最大紀錄
-        sql = "SELECT RMZHL FROM SAP_25A WHERE AUFNR ='"+AUFNR_+"' AND MANDT = '" +MANDT+"' AND STATUS <> '004' ORDER BY IDBSNO DESC LIMIT 1"
+        sql = "SELECT RMZHL FROM sap_25a WHERE AUFNR ='"+AUFNR_+"' AND MANDT = '" +MANDT+"' AND STATUS <> '004' ORDER BY IDBSNO DESC LIMIT 1"
         #print(sql)
         df_rmzhl = pd.read_sql(sql, eng_cim)
 
