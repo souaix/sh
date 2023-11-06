@@ -1,9 +1,9 @@
-
 import sys
 import datetime
 import pymssql
 import pandas as pd
 from sqlalchemy import create_engine
+from sqlalchemy import text
 import pyodbc
 import requests
 import time
@@ -20,6 +20,8 @@ import connect.connect as cc
 
 eng_mes = cc.connect('MES', 'MES_Production')
 eng_ris = cc.connect('RIS', 'RIS_PRD')
+
+con_mes = eng_mes.connect()
 cur = eng_ris.cursor()
 
 DB = "MES_Production"
@@ -46,12 +48,10 @@ def sql_str(table, cols):
 
 
 def sql_val(sql, df, cur, con_sap):
+
     for j in range(0, len(df["LOTNO"])):
         bindVar = {}
         for i, v in enumerate(df):
-#             print(df[v][j])
-#             print(type(df[v][j]))
-#             print("----")
             if(str(df[v][j])=="NaT" or str(df[v][j])=="nan" or str(df[v][j])=="None"):
                 b = {str(v): ''}
             else:
@@ -79,8 +79,6 @@ df_del = df[df["TYPE_DESC"]=="UPDATE-DEL"]
 df_ins = df[df["TYPE_DESC"]=="UPDATE-INS"]
 df_insert = df[df["TYPE_DESC"]=="INSERT"]
 
-df_ins.reset_index(drop=True,inplace=True)
-df_insert.reset_index(drop=True,inplace=True)
 
 #刪除RIS資料用
 del_lot = df_del["LOTNO"].tolist()
@@ -107,6 +105,10 @@ del df_ins_["COMPONENTNO"]
 df_ins_.rename(columns={"QTY":"LOT_QTY"}, inplace=True)
 
 
+df_ins_.reset_index(drop=True,inplace=True)
+df_insert.reset_index(drop=True,inplace=True)
+
+
 try:
     if(del_lot_str!=''):
         #刪RIS
@@ -118,17 +120,25 @@ try:
         cols = df_ins_.columns.tolist()
         sql = sql_str('MES.MES_PRODUCTLABELDATA_NEW', cols)
         sql_val(sql, df_ins_, cur, eng_ris)
-    
+
     #刪MES
     if(del_sn1_str!=''):
         sql = "DELETE FROM "+DB+".dbo.TH_PRODUCTLABELDATA_RECORD WHERE SN IN("+del_sn1_str+")"
-        eng_mes.execute(sql)
+        con_mes.execute(text(sql))
+        con_mes.commit()
+
+    #    eng_mes.execute(sql)
     if(del_sn2_str!=''):        
         sql = "DELETE FROM "+DB+".dbo.TH_PRODUCTLABELDATA_RECORD WHERE SN IN("+del_sn2_str+")"
-        eng_mes.execute(sql)
+        con_mes.execute(text(sql))
+        con_mes.commit()
+
+
     if(del_sn3_str!=''):        
         sql = "DELETE FROM "+DB+".dbo.TH_PRODUCTLABELDATA_RECORD WHERE SN IN("+del_sn3_str+")"
-        eng_mes.execute(sql)
+
+        con_mes.execute(text(sql))
+        con_mes.commit()
     
 except Exception as E:
     print(E)
