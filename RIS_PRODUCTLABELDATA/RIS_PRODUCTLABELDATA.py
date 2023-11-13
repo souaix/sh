@@ -74,7 +74,7 @@ def str_combine(arr):
 
 
 #開啟log
-logfun.set_logging('/home/cim/sh/RIS_PRODUCTLABELDATA')
+logfun.set_logging('/home/cim/log/RIS_PRODUCTLABELDATA')
 
 logging.debug('----------------------------------------------------------')
 logging.info('Start at - ' + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
@@ -87,20 +87,31 @@ if(len(df)>0):
     df_del = df[df["TYPE_DESC"]=="UPDATE-DEL"]
     df_ins = df[df["TYPE_DESC"]=="UPDATE-INS"]
     df_insert = df[df["TYPE_DESC"]=="INSERT"]
-
-    #刪除RIS資料用
-    del_lot = df_del["LOTNO"].tolist()
-    del_lot_str = str_combine(del_lot)
-    #刪除MES資料用
+    df_delete = df[df["TYPE_DESC"]=="DELETE"]
+    
+    #刪除MES資料用 by SN
     del_sn = df_del["SN"].tolist()
     ins_sn = df_ins["SN"].tolist()
     insert_sn = df_insert["SN"].tolist()
+    delete_sn = df_delete["SN"].tolist()
+    
     del_sn1_str = str_combine(del_sn)
     del_sn2_str = str_combine(ins_sn)
     del_sn3_str = str_combine(insert_sn)
-
-    #避免重複資料，及insert筆數合併
+    del_sn4_str = str_combine(delete_sn)
+    
+    #避免del重複資料
     df_del.drop_duplicates(subset=['LOTNO'],keep='last',inplace=True)
+    df_delete.drop_duplicates(subset=['LOTNO'],keep='last',inplace=True)
+    
+    #刪除RIS資料用 by LOT
+    del_lot = df_del["LOTNO"].tolist()
+    del_lot_str = str_combine(del_lot)
+    
+    delete_lot = df_delete["LOTNO"].tolist()
+    delete_lot_str = str_combine(delete_lot)
+    
+    #避免ins重複資料，及insert筆數合併    
     df_ins_ = pd.concat([df_ins,df_insert])
     df_ins_.drop_duplicates(subset=['LOTNO'],keep='last',inplace=True)
 
@@ -136,6 +147,15 @@ if(len(df)>0):
         else:
             logging.info('NO UPDATE-INS DATA')             
 
+        if(delete_lot_str!=''):
+            #刪除RIS >> 放置最後順序，避免刪掉後又INS回去
+            logging.info('DEL DELETE RIS LOT : '+ datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")) 
+            sql = "DELETE FROM MES.MES_PRODUCTLABELDATA_NEW WHERE LOTNO in("+delete_lot_str+")"
+            cur.execute(sql)
+            eng_ris.commit()
+        else:
+            logging.info('NO DELETE DATA') 
+            
         #刪MES
         if(del_sn1_str!=''):
             logging.info('DEL UPDATE-DEL MES SN : '+ datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
@@ -164,6 +184,15 @@ if(len(df)>0):
         else:
             logging.info('NO INSERT DATA')            
             
+        if(del_sn4_str!=''):        
+            logging.info('DEL INSERT MES SN : '+ datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
+            sql = "DELETE FROM "+DB+".dbo.TH_PRODUCTLABELDATA_RECORD WHERE SN IN("+del_sn4_str+")"
+
+            con_mes.execute(text(sql))
+            con_mes.commit()            
+        else:
+            logging.info('NO INSERT DATA')
+            
         logging.info('END at - '+ datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
         logging.debug('----------------------------------------------------')
     except Exception as E:
@@ -171,4 +200,4 @@ if(len(df)>0):
 else:
     logging.info('Theres no record to update')    
     logging.info('End at - ' + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
-    logging.debug('----------------------------------------------------')
+    logging.debug('---------------------------------------------------------')
