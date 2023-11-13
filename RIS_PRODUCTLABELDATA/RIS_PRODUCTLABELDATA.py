@@ -106,10 +106,23 @@ if(len(df)>0):
     
     #刪除RIS資料用 by LOT
     del_lot = df_del["LOTNO"].tolist()
-    del_lot_str = str_combine(del_lot)
+    
+    #in list > oracle不接受超過1000筆，須拆分
+    if(len(del_lot)/1000>1):
+        del_lot_str_1000 = str_combine(del_lot[0:1000])
+        del_lot_str_2000 = str_combine(del_lot[1000:])
+        del_lot_str = ''
+        
+    else:
+        del_lot_str = str_combine(del_lot)
+        del_lot_str_1000 =''
+        
     
     delete_lot = df_delete["LOTNO"].tolist()
     delete_lot_str = str_combine(delete_lot)
+    
+
+    
     
     #避免ins重複資料，及insert筆數合併    
     df_ins_ = pd.concat([df_ins,df_insert])
@@ -129,10 +142,15 @@ if(len(df)>0):
 
 
     try:
-        if(del_lot_str!=''):
-            #刪RIS
+        if(del_lot_str!='' or del_lot_str_1000 != ''):
+            #刪RIS            
             logging.info('DEL UPDATE-DEL RIS LOT : '+ datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")) 
-            sql = "DELETE FROM MES.MES_PRODUCTLABELDATA_NEW WHERE LOTNO in("+del_lot_str+")"
+            
+            if(len(del_lot)/1000>1):            
+                sql = "DELETE FROM MES.MES_PRODUCTLABELDATA_NEW WHERE LOTNO in("+del_lot_str_1000+") or LOTNO in("+del_lot_str_2000+")"
+            else:
+                sql = "DELETE FROM MES.MES_PRODUCTLABELDATA_NEW WHERE LOTNO in("+del_lot_str+")"
+
             cur.execute(sql)
             eng_ris.commit()
         else:
