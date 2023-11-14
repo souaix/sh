@@ -4,7 +4,10 @@
 #排程去檢核實體表與VIEW表的差異 (UPDATE/DELTE/INSERT)
 #差異觸發Trigger留下Record
 #排程執行Record，將RIS的實體表做同步差異
+#修改優先順序應為 : update-del、(update-ins+insert),delete
 #11/14 - oracle最多只能in 1000筆，需做拆解動作
+#11/14 - 增加mail alarm
+#11/14 - 差異Trigger不包含QTY = null，避免資料有問題 (剛下線時可能會出現null)
 
 import sys
 import datetime
@@ -154,7 +157,7 @@ if(len(df)>0):
 
 
     df_ins_.reset_index(drop=True,inplace=True)
-    df_insert.reset_index(drop=True,inplace=True)
+    #df_insert.reset_index(drop=True,inplace=True)
 
 
     try:
