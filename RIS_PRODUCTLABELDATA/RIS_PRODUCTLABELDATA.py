@@ -1,3 +1,11 @@
+#實體表 :TH_PRODUCTLABELDATA
+#VIEW表 :V_PRODUCTLABELDATA
+#Trigger紀錄表 :TH_PRODUCTLABELDATA_RECORD
+#排程去檢核實體表與VIEW表的差異 (UPDATE/DELTE/INSERT)
+#差異觸發Trigger留下Record
+#排程執行Record，將RIS的實體表做同步差異
+#11/14 - oracle最多只能in 1000筆，需做拆解動作
+
 import sys
 import datetime
 import pymssql
@@ -17,6 +25,8 @@ sys.path.append('/home/cim')
 
 #logging
 import global_fun.logging_fun as logfun
+#email
+import global_fun.thmail_fun as thmail
 
 # connector
 import connect.connect as cc
@@ -109,14 +119,20 @@ if(len(df)>0):
     
     #in list > oracle不接受超過1000筆，須拆分
     if(len(del_lot)/1000>1):
-        del_lot_str_1000 = str_combine(del_lot[0:1000])
-        del_lot_str_2000 = str_combine(del_lot[1000:])
-        del_lot_str = ''
+        
+        import math
+        parti = math.ceil(len(del_lot)/1000)
+        splitpart=[]
+        cc = 0
+        for i in range(0,parti):
+            splitpart.append(str_combine(del_lot[cc:cc+1000]))
+            cc = cc+1000
+            
+        del_lot_str= '' 
         
     else:
         del_lot_str = str_combine(del_lot)
-        del_lot_str_1000 =''
-        
+
     
     delete_lot = df_delete["LOTNO"].tolist()
     delete_lot_str = str_combine(delete_lot)
@@ -142,15 +158,21 @@ if(len(df)>0):
 
 
     try:
-        if(del_lot_str!='' or del_lot_str_1000 != ''):
+        if(del_lot_str!='' or len(del_lot)/1000>1):
             #刪RIS            
             logging.info('DEL UPDATE-DEL RIS LOT : '+ datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")) 
             
             if(len(del_lot)/1000>1):            
-                sql = "DELETE FROM MES.MES_PRODUCTLABELDATA_NEW WHERE LOTNO in("+del_lot_str_1000+") or LOTNO in("+del_lot_str_2000+")"
+                logging.info('DEL UPDATE-DEL LOT >1000')
+                sql = "DELETE FROM MES.MES_PRODUCTLABELDATA_NEW WHERE "
+                sql_del_lot=''
+                for s in splitpart:    
+                    sql_del_lot = sql_del_lot+"LOTNO in("+s+") or "        
+                sql = sql+sql_del_lot[:-4]
             else:
+                logging.info('DEL UPDATE-DEL LOT <=1000')
                 sql = "DELETE FROM MES.MES_PRODUCTLABELDATA_NEW WHERE LOTNO in("+del_lot_str+")"
-
+                
             cur.execute(sql)
             eng_ris.commit()
         else:
@@ -215,6 +237,9 @@ if(len(df)>0):
         logging.debug('----------------------------------------------------')
     except Exception as E:
         logging.debug("UPDATE FAIL : "+str(E))
+        #email alarm
+        from datetime import date
+        thmail.thmail('productlabeldata','Error:'+str(E),'/home/cim/log/RIS_PRODUCTLABELDATA/'+format(str(date.today()))+'.log','[WARNING] - PRODUCTLABELDATA同步錯誤')
 else:
     logging.info('Theres no record to update')    
     logging.info('End at - ' + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
