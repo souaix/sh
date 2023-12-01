@@ -7,12 +7,17 @@ from sqlalchemy import text
 import pyodbc
 import sys
 import time
+import logging
 
 import warnings
 warnings.filterwarnings('ignore')
 
 import sys
 sys.path.append('/home/cim')
+
+#logging
+import global_fun.logging_fun as logfun
+
 # connector
 import connect.connect as cc
 
@@ -57,6 +62,8 @@ def sql_val(sql, df, cur, eng_sap):
 
 
 def UPDATESTATUS(MANDT):
+    
+    
     #CIM等待交易的BUDAT區間
     sql = "SELECT MIN(`BUDAT`) AS `STARTDAT`,MAX(`BUDAT`) AS `ENDDAT` FROM `sap_wktime`.`sap_25a` WHERE `MANDT` = '"+MANDT+"' AND `STATUS` = '001'"
     check_date = pd.read_sql_query(sql, eng_cim)
@@ -190,6 +197,11 @@ def READ_MES(MANDT,BEGIN,END):
     return df_25A, df_25B, df_25C1,AUFNR_LIST
 
 
+#開啟log
+logfun.set_logging('/home/cim/log/SAP_25A')
+
+logging.debug('----------------------------------------------------------')
+logging.info('Start at - ' + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
 
 
 #取出時間區間
@@ -201,16 +213,18 @@ def READ_MES(MANDT,BEGIN,END):
 
 #
 sql = "SELECT PARAMETERVALUE FROM TBLSYSPARAMETER WHERE PARAMETERNO = 'SAP_MANDT'"
-MANDT = str(pd.read_sql(sql,eng_mes)["PARAMETERVALUE"][0])
 
-#更新狀態
-
-# try:
-#     print('更新CIM LOG狀態')
-#     UPDATESTATUS(MANDT)
-# except Exception as e:
-#     print('更新CIM LOG狀態失敗')
-#     print(e)
+try:
+    MANDT = str(pd.read_sql(sql,eng_mes)["PARAMETERVALUE"][0])
+except:
+    MANDT=''
+    
+if(MANDT ==''):
+    logging.warning('NO FIND MANDT')
+    exit()
+    
+#SAP交易的狀態更新至CIM
+logging.info('UPDATE STATUS') 
 UPDATESTATUS(MANDT)
 
 
@@ -218,22 +232,33 @@ UPDATESTATUS(MANDT)
 # In[4]:
 
 #2023.10.23 -- 撈出最後一次報工時間->迴圈++到今日
-sql = 'SELECT max(BUDAT) as BUDAT from sap_25a'
+
+
+sql = 'SELECT max(BUDAT) as BUDAT from sap_25a where BUDAT_ORG IS NULL'
 df_log = pd.read_sql(sql, eng_cim)
 BUDAT = df_log["BUDAT"][0]
+
+logging.info('LAST BUDAT :'+str(BUDAT))
+
 BEGIN = datetime.datetime.strptime(BUDAT, '%Y%m%d')+datetime.timedelta(days=1)
+#BEGIN = datetime.datetime.strptime(BUDAT, '%Y%m%d')
+
 NOWDAY = datetime.datetime.now()
 # NOWDAY = datetime.datetime(2023,10,24,0,0)
 day_i = NOWDAY-BEGIN
 day_i = day_i.days  
+
+logging.info('SAP_25A START FROM '+ BEGIN.strftime('%Y-%m-%d')+' 00:00:00 to '+NOWDAY.strftime('%Y-%m-%d')+' 00:00:00')
 
 for i in range(0,day_i):
     
     END = BEGIN + datetime.timedelta(days=+1)
     BEGIN_str = BEGIN.strftime('%Y-%m-%d')+' 00:00:00'
     END_str = END.strftime('%Y-%m-%d')+' 00:00:00'
-    print(BEGIN_str+'~~~'+END_str)
-    print("MANDT:"+MANDT)    
+    
+    logging.info(str(i)+"-"+BEGIN_str+'～'+END_str)
+    
+#     print("MANDT:"+MANDT)    
     
     df_25A, df_25B, df_25C1,AUFNR_LIST = READ_MES(MANDT,BEGIN_str,END_str)
 
@@ -276,7 +301,7 @@ for i in range(0,day_i):
         if( (EXETYP_=='C' and STATUS_=='003') or (EXETYP_=='A' and (STATUS_=='002' or STATUS_=='004') ) or (EXETYP_=='' and STATUS_=='') ):
             time.sleep(1)
             # 取RMZHL歷史最大紀錄
-            sql = "SELECT RMZHL FROM sap_25a WHERE AUFNR ='"+AUFNR_+"' AND MANDT = '" +MANDT+"' AND STATUS <> '004' ORDER BY IDBSNO DESC LIMIT 1"
+            sql = "SELECT RMZHL FROM sap_25a WHERE AUFNR ='"+AUFNR_+"' AND MANDT = '" +MANDT+"' AND STATUS <> '004' ORDER BY RMZHL DESC LIMIT 1"
             #print(sql)
             df_rmzhl = pd.read_sql(sql, eng_cim)
 
@@ -333,10 +358,10 @@ for i in range(0,day_i):
                 cim_25A["EXETYP"] = "A"
                 cim_25A["STATUS"] = '001'
                 cim_25A.to_sql('sap_25a', con=eng_cim, if_exists='append', index=False)
-               
 
             except Exception as e:
                 print(e)
+                logging.warning('Error :'+str(e))
                 # 拋給cim=>拋送中介表失敗
                 cim_25A["EXETYP"] = "A"
                 cim_25A["STATUS"] = '004'
@@ -345,6 +370,8 @@ for i in range(0,day_i):
                 
     BEGIN = BEGIN + datetime.timedelta(days=+1)
 
+
+logging.debug('----------------------------------------------------------')
 
 eng_cim.dispose()
 eng_mes.dispose()
