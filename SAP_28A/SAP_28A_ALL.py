@@ -71,8 +71,9 @@ def CLOSEMO(IDBSNO, MANDT, BEGIN,END):
 
 now = datetime.datetime.now()
 BEGIN = now + datetime.timedelta(days=-1)
+END = now + datetime.timedelta(days=+1)
 BEGIN = BEGIN.strftime('%Y-%m')+'-01 00:00:00'
-END = now.strftime('%Y-%m-%d')+' 00:00:00'
+END = END.strftime('%Y-%m-%d')+' 00:00:00'
 
 sql = "SELECT PARAMETERVALUE FROM TBLSYSPARAMETER WHERE PARAMETERNO = 'SAP_MANDT'"
 MANDT = pd.read_sql(sql, eng_mes)["PARAMETERVALUE"][0]
@@ -82,6 +83,7 @@ df_fail = pd.DataFrame(
 
 df_28A, df_28B = CLOSEMO('123' ,MANDT, BEGIN,END,)
 aufnr_list = df_28A["AUFNR"].tolist()
+
 for i,v in enumerate(aufnr_list):
     idbsno = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
 
