@@ -69,6 +69,7 @@ def CLOSEMO(IDBSNO, AUFNR, MANDT):
 
 
 now = datetime.datetime.now()
+#now = datetime.datetime(2023,12,7,0,0,0)
 BEGIN = now + datetime.timedelta(days=-1)
 BEGIN = BEGIN.strftime('%Y-%m-%d')+' 00:00:00'
 END = now.strftime('%Y-%m-%d')+' 00:00:00'
