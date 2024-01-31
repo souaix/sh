@@ -34,14 +34,14 @@ import global_fun.thmail_fun as thmail
 # connector
 import connect.connect as cc
 
-eng_mes = cc.connect('MES', 'MES_Production')
-eng_ris = cc.connect('RIS', 'RIS_PRD')
+eng_mes = cc.connect('MES', 'MES_TEST')
+eng_ris = cc.connect('RIS', 'RIS_Test')
 
 con_mes = eng_mes.connect()
 cur = eng_ris.cursor()
 
-DB = "MES_Production"
-# DB = "MES_Test"
+#DB = "MES_Production"
+DB = "MES_Test"
 
   
 def sql_str(table, cols):
@@ -72,9 +72,8 @@ def sql_val(sql, df, cur, con_sap):
             else:
                 b = {str(v): str(df[v][j])}
             bindVar.update(b)
-        #print('----')
-        #print(bindVar)
-        
+#         print(sql)
+#         print(bindVar)
         cur.execute(sql, bindVar)
         con_sap.commit()
         
@@ -88,7 +87,7 @@ def str_combine(arr):
 
 
 #開啟log
-logfun.set_logging('/home/cim/log/RIS_PRODUCTLABELDATA')
+logfun.set_logging('/home/cim/log/RIS_PRODUCTLABELDATA_TEST')
 
 logging.debug('----------------------------------------------------------')
 logging.info('Start at - ' + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
@@ -176,7 +175,7 @@ if(len(df)>0):
             else:
                 logging.info('DEL UPDATE-DEL LOT <=1000')
                 sql = "DELETE FROM MES.MES_PRODUCTLABELDATA WHERE LOTNO in("+del_lot_str+")"
-            print(sql)                
+                
             cur.execute(sql)
             eng_ris.commit()
         else:
@@ -253,8 +252,7 @@ if(len(df)>0):
         logging.info("UPDATE FAIL : "+str(E))
         #email alarm
         from datetime import date
-        thmail.thmail('productlabeldata','Error:'+str(E),'/home/cim/log/RIS_PRODUCTLABELDATA/'+format(str(date.today()))+'.log','[WARNING] - PRODUCTLABELDATA同步錯誤')
-
+        thmail.thmail('productlabeldata','Error:'+str(E),'/home/cim/log/RIS_PRODUCTLABELDATA_TEST/'+format(str(date.today()))+'.log','[WARNING] - PRODUCTLABELDATA_TEST同步錯誤')
         con_mes.close()
         eng_mes.dispose()
 
@@ -264,4 +262,3 @@ else:
     logging.debug('---------------------------------------------------------')
     con_mes.close()
     eng_mes.dispose()
-

@@ -122,7 +122,7 @@ def UPDATESTATUS(MANDT):
 
             con_cim = eng_cim.connect()
             con_cim.execute(text(sql))
-            con_cim.commit()
+            #con_cim.commit()
 
 
 def READ_MES(MANDT,BEGIN,END):

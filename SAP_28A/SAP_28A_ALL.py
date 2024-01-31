@@ -81,7 +81,7 @@ MANDT = pd.read_sql(sql, eng_mes)["PARAMETERVALUE"][0]
 df_fail = pd.DataFrame(
     columns=['AUFNR', 'ZZTB_NO', 'ZZCUST_LOT', 'GETDAT', 'STATUS', 'DIRECT', 'NODE'])
 
-df_28A, df_28B = CLOSEMO('123' ,MANDT, BEGIN,END,)
+df_28A, df_28B = CLOSEMO('123' ,MANDT, BEGIN,END)
 aufnr_list = df_28A["AUFNR"].tolist()
 
 for i,v in enumerate(aufnr_list):
