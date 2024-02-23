@@ -7,6 +7,7 @@ from sqlalchemy import create_engine
 import pyodbc
 import requests
 import time
+import calendar
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -69,10 +70,23 @@ def CLOSEMO(IDBSNO, AUFNR, MANDT):
 
 
 now = datetime.datetime.now()
-now = datetime.datetime(2024,2,1,0,0,0)
-BEGIN = now + datetime.timedelta(days=-1)
+#now = datetime.datetime(2024,1,10,0,0,0)
+
+year = datetime.datetime.now().year
+month = datetime.datetime.now().month
+lastday = calendar.monthrange(year,month)[1]
+day = datetime.datetime.now().day
+
+if(day==lastday):
+    BEGIN = now + datetime.timedelta(days=-1)
+    END   = now + datetime.timedelta(days=1)
+else:
+    BEGIN = now + datetime.timedelta(days=-1)
+    END   = now 
+
+
 BEGIN = BEGIN.strftime('%Y-%m-%d')+' 00:00:00'
-END = now.strftime('%Y-%m-%d')+' 00:00:00'
+END = END.strftime('%Y-%m-%d')+' 00:00:00'
 
 sql ='''
 select AUFNR from
