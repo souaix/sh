@@ -21,17 +21,18 @@ import global_fun.logging_fun as logfun
 # connector
 import connect.connect as cc
 
-eng_mes = cc.connect('MES', 'MES_Production')
+eng_mes = cc.connect('MES', 'MES_Test')
 eng_cim = cc.connect('CIM_ubuntu', 'sap_wktime')
-eng_sap = cc.connect('SAP', 'SAP_PRD')
+eng_sap = cc.connect('SAP', 'SAP_Test')
 
 cur = eng_sap.cursor()
 
-DB = "MES_Production"
-#DB = "MES_Test"
+#DB = "MES_Production"
+DB = "MES_Test"
 
 
 def sql_str(table, cols):
+
     sql = "INSERT INTO "+table + "("
 
     for i, v in enumerate(cols):
@@ -198,7 +199,7 @@ def READ_MES(MANDT,BEGIN,END):
 
 
 #開啟log
-logfun.set_logging('/home/cim/log/SAP_25A')
+logfun.set_logging('/home/cim/log/SAP_25A_TEST')
 
 logging.debug('----------------------------------------------------------')
 logging.info('Start at - ' + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
@@ -234,14 +235,13 @@ UPDATESTATUS(MANDT)
 #2023.10.23 -- 撈出最後一次報工時間->迴圈++到今日
 
 
-sql = "SELECT max(BUDAT) as BUDAT from sap_25a where BUDAT_ORG IS NULL AND MANDT='"+MANDT+"'"
-
+sql = "SELECT max(BUDAT) as BUDAT from sap_25a where BUDAT_ORG IS NULL and MANDT='"+MANDT+"'"
 df_log = pd.read_sql(sql, eng_cim)
 BUDAT = df_log["BUDAT"][0]
 
 logging.info('LAST BUDAT :'+str(BUDAT))
 
-BEGIN = datetime.datetime.strptime(BUDAT, '%Y%m%d')+datetime.timedelta(days=1)
+BEGIN = datetime.datetime.strptime(str(BUDAT), '%Y%m%d')+datetime.timedelta(days=1)
 #BEGIN = datetime.datetime.strptime(BUDAT, '%Y%m%d')
 
 NOWDAY = datetime.datetime.now()

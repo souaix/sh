@@ -70,7 +70,7 @@ def CLOSEMO(IDBSNO, AUFNR, MANDT):
 
 
 now = datetime.datetime.now()
-#now = datetime.datetime(2024,3,4,0,0,0)
+#now = datetime.datetime(2024,1,10,0,0,0)
 
 year = datetime.datetime.now().year
 month = datetime.datetime.now().month
@@ -88,22 +88,14 @@ else:
 BEGIN = BEGIN.strftime('%Y-%m-%d')+' 00:00:00'
 END = END.strftime('%Y-%m-%d')+' 00:00:00'
 
-sql ='''
-select AUFNR from
-(select distinct left(LOTNO,12) AS MONO from TBLINVWIPINVENTORY_SEMI_DETAIL where STATUS='02' and FGDINDATE >=\''''+BEGIN+'''' and FGDINDATE < \''''+END+'''') as a
-left join
-(select aufnr,mono from TBLOEMOBASIS) as b
-on a.MONO=b.MONO
-'''
-
-df = pd.read_sql(sql, eng_mes)
-aufnr_list = df['AUFNR'].tolist()
 
 sql = "SELECT PARAMETERVALUE FROM TBLSYSPARAMETER WHERE PARAMETERNO = 'SAP_MANDT'"
 MANDT = pd.read_sql(sql, eng_mes)["PARAMETERVALUE"][0]
 
 df_fail = pd.DataFrame(
     columns=['AUFNR', 'ZZTB_NO', 'ZZCUST_LOT', 'GETDAT', 'STATUS', 'DIRECT', 'NODE'])
+
+aufnr_list=['003000011047','003000011232']
 
 for i,v in enumerate(aufnr_list):
     idbsno = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
