@@ -117,8 +117,8 @@ for i in range(0,day_i):
     sql ='''
     select AUFNR from
     (select distinct left(LOTNO,12) AS MONO from TBLINVWIPINVENTORY_SEMI_DETAIL where STATUS='02' and FGDINDATE >=\''''+BEGIN+'''' and FGDINDATE < \''''+END+'''') as a
-    left join
-    (select aufnr,mono from TBLOEMOBASIS) as b
+    inner join
+    (select aufnr,mono from TBLOEMOBASIS where MOSTATE='99') as b
     on a.MONO=b.MONO
     '''
     df = pd.read_sql(sql, eng_mes)

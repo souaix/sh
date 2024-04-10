@@ -12,4 +12,4 @@ import global_fun.sftp_fun as ss
 
 
 
-sftp = ss.sftp_upload('mft-ap.st.com','Share/gobmsftp_tonghsing_996Z/Yield','test.csv','/home/cim/global_fun/PublicKeyForST/STSFTP_DSAKEY')
+sftp = ss.sftp_upload('mft-ap.st.com','Share/gobmsftp_tonghsing_996Z/Yield','996ZYield20240403.csv','/home/cim/global_fun/PublicKeyForST/STSFTP_DSAKEY')

@@ -95,7 +95,7 @@ MANDT = pd.read_sql(sql, eng_mes)["PARAMETERVALUE"][0]
 df_fail = pd.DataFrame(
     columns=['AUFNR', 'ZZTB_NO', 'ZZCUST_LOT', 'GETDAT', 'STATUS', 'DIRECT', 'NODE'])
 
-aufnr_list=['003000011047','003000011232']
+aufnr_list=['003900001152','003900001259']
 
 for i,v in enumerate(aufnr_list):
     idbsno = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")

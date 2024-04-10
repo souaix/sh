@@ -70,7 +70,7 @@ def CLOSEMO(IDBSNO, AUFNR, MANDT):
 
 
 now = datetime.datetime.now()
-#now = datetime.datetime(2024,3,4,0,0,0)
+#now = datetime.datetime(2024,4,7,0,0,0)
 
 year = datetime.datetime.now().year
 month = datetime.datetime.now().month
@@ -91,8 +91,8 @@ END = END.strftime('%Y-%m-%d')+' 00:00:00'
 sql ='''
 select AUFNR from
 (select distinct left(LOTNO,12) AS MONO from TBLINVWIPINVENTORY_SEMI_DETAIL where STATUS='02' and FGDINDATE >=\''''+BEGIN+'''' and FGDINDATE < \''''+END+'''') as a
-left join
-(select aufnr,mono from TBLOEMOBASIS) as b
+inner join
+(select aufnr,mono from TBLOEMOBASIS where MOSTATE ='99') as b
 on a.MONO=b.MONO
 '''
 
