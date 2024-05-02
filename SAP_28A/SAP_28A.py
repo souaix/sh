@@ -26,7 +26,7 @@ cur = eng_sap.cursor()
 # logging
 import global_fun.logging_fun as logfun
 #開啟log
-logfun.set_logging('/home/cim/log/SAP_INOUT_STOCK')
+logfun.set_logging('/home/cim/log/SAP_28A')
 
 DB = "MES_Production"
 # DB = "MES_Test"
