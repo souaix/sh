@@ -7,6 +7,7 @@ from sqlalchemy import create_engine
 import pyodbc
 import requests
 import time
+import logging
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -20,6 +21,12 @@ eng_mes = cc.connect('MES', 'MES_Production')
 # con_cim = cc.connect('CIM', 'SAP_WKTIME')
 eng_sap = cc.connect('SAP', 'SAP_PRD')
 cur = eng_sap.cursor()
+
+
+# logging
+import global_fun.logging_fun as logfun
+#開啟log
+logfun.set_logging('/home/cim/log/SAP_INOUT_STOCK')
 
 DB = "MES_Production"
 # DB = "MES_Test"
@@ -311,6 +318,8 @@ if(len(df_pda) > 0):
             if code == 200 and result== 'success':                
                 
                 print(aufnr+":"+str(boxno)+"--XML入庫SUCCESS")
+                logging.info(aufnr+":"+str(boxno)+"--XML入庫SUCCESS")
+
 
                 df_success_in_ = df_pda[df_pda["ZZTB_NO"] == boxno]
                 df_success_in_ = df_success_in_.copy()
@@ -336,6 +345,8 @@ if(len(df_pda) > 0):
             if code == 200 and result== 'success':
 
                 print(aufnr+":"+str(boxno)+"--XML退庫SUCCESS")
+                logging.info(aufnr+":"+str(boxno)+"--XML入庫SUCCESS")
+
                 df_success_out_ = df_pda[df_pda["AUFNR"] == fgdinno]
                 df_success_out_ = df_success_out_.copy()
                 df_success_out_["NODE"] = sysmsg
@@ -344,6 +355,9 @@ if(len(df_pda) > 0):
             # 紀錄失敗資料>>下次撈取的時間區間
             else:
                 print(aufnr+":"+str(boxno)+"--XML退庫FAIL")
+                logging.info(aufnr+":"+str(boxno)+"--XML退庫FAIL")
+
+
                 df_fail_out_ = df_pda[df_pda["ZZTB_NO"] == boxno]
                 df_fail_out_ = df_fail_out_.copy()
                 df_fail_out_["NODE"] = sysmsg
@@ -359,6 +373,8 @@ if(len(df_pda) > 0):
             if code == 200 and result== 'success':
 
                 print(aufnr+":"+str(boxno)+"--XML入庫SUCCESS")
+                logging.info(aufnr+":"+str(boxno)+"--XML退庫FAIL")
+
 
                 df_success_in_ = df_pda[df_pda["ZZTB_NO"] == boxno]
                 df_success_in_ = df_success_in_.copy()
@@ -369,6 +385,8 @@ if(len(df_pda) > 0):
             # 紀錄XML失敗資料>>下次撈取的時間區間
             else:
                 print(aufnr+":"+str(boxno)+"--XML入庫FAIL")
+                logging.info(aufnr+":"+str(boxno)+"--XML入庫FAIL")
+
                 df_fail_in_ = df_pda[df_pda["ZZTB_NO"] == boxno]
                 df_fail_in_ = df_fail_in_.copy()
                 df_fail_in_["NODE"] = sysmsg
@@ -382,6 +400,8 @@ if(len(df_pda) > 0):
             # 紀錄最後成功筆數>>下次撈取的時間區間
             if code == 200 and result== 'success':
                 print(aufnr+":"+str(boxno)+"--XML退庫SUCCESS")
+                logging.info(aufnr+":"+str(boxno)+"--XML入庫FAIL")
+
                 df_success_out_ = df_pda[df_pda["AUFNR"] == fgdinno]
                 df_success_out_ = df_success_out_.copy()
                 df_success_out_["NODE"] = sysmsg
@@ -390,6 +410,8 @@ if(len(df_pda) > 0):
             # 紀錄失敗資料>>下次撈取的時間區間
             else:
                 print(aufnr+":"+str(boxno)+"--XML退庫FAIL")
+                logging.info(aufnr+":"+str(boxno)+"--XML退庫FAIL")
+
                 df_fail_out_ = df_pda[df_pda["AUFNR"] == fgdinno]
                 df_fail_out_ = df_fail_out_.copy()
                 df_fail_out_["NODE"] = sysmsg

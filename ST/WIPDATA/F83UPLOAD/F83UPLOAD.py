@@ -35,29 +35,35 @@ BEGIN = BEGIN.strftime('%Y-%m-%d')+' 00:00:00'
 END = now.strftime('%Y-%m-%d')+' 00:00:00'
 
 DATESTR = now.strftime('%Y%m%d')
-FILESTR = "996ZYield"+DATESTR+".CSV"
+FILESTR = "996ZYield"+DATESTR+".csv"
 
 sql = "EXECUTE "+DB+".dbo.[ST_S093B] @D1='" + BEGIN+"',@D2='"+END+"'"
+#print(sql)
 df = pd.read_sql(sql, eng_mes)
 
-df.to_csv(FILESTR,index=False)
+try:
+    df.to_csv("/home/cim/sh/ST/WIPDATA/F83UPLOAD/"+FILESTR,index=False)
+    print(FILESTR+" success")
+except:
+    print("to_sql fail")
 
 hh = datetime.datetime.now().hour
 
-for root, dir_list, file_list in os.walk('./'):
+for root, dir_list, file_list in os.walk('/home/cim/sh/ST/WIPDATA/F83UPLOAD'):
     for csv in file_list:
         if(".CSV" in csv or ".csv" in csv) :                  
             from datetime import date
+            #print(csv)
             #8點先發給工程
             if(hh==8):
-                thmail.thmail('f83yieldtest','FYI','/home/cim/sh/ST/WIPDATA/F83UPLOAD/'+csv,'[ST]-F83YIELD:'+format(str(date.today())))
+                thmail.thmail('f83yield','FYI','/home/cim/sh/ST/WIPDATA/F83UPLOAD/'+csv,'[ST]-F83YIELD:'+format(str(date.today())))
                 os.remove('/home/cim/sh/ST/WIPDATA/F83UPLOAD/'+csv)
 
-            else:
+            elif(hh==100):
                 try:
                     sftp = ss.sftp_upload('mft-ap.st.com','Share/gobmsftp_tonghsing_996Z/Yield',csv,'/home/cim/global_fun/PublicKeyForST/STSFTP_DSAKEY')
                     os.remove('/home/cim/sh/ST/WIPDATA/F83UPLOAD/'+csv)
                 except:
-                    thmail.thmail('f83yieldtest','F83 Yield上拋失敗，請聯繫IT處理','/home/cim/sh/ST/WIPDATA/F83UPLOAD/'+csv,'[ST]-F83YIELD FAIL:'+format(str(date.today())))
+                    thmail.thmail('f83yield','F83 Yield上拋失敗，請聯繫IT處理','/home/cim/sh/ST/WIPDATA/F83UPLOAD/'+csv,'[ST]-F83YIELD FAIL:'+format(str(date.today())))
 
 eng_mes.dispose()
