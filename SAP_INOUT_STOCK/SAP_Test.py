@@ -182,6 +182,7 @@ def send_xml(xml_data):
 # 取最後MES拋轉入庫時間
 sql = "SELECT top(1) GETDAT FROM "+DB + \
     ".dbo.TH_SAPSTOCK_LOG WHERE STATUS ='SUCCESS' AND DIRECT ='IN' ORDER BY GETDAT DESC"
+print(sql)
 df_log = pd.read_sql(sql, eng_mes)
 if len(df_log) > 0:
     LAST_PDADAT = df_log['GETDAT'][0]
@@ -192,6 +193,7 @@ else:
 # 取最後SAP拋轉退庫時間
 sql = "SELECT top(1) GETDAT FROM "+DB + \
     ".dbo.TH_SAPSTOCK_LOG WHERE STATUS ='SUCCESS' AND DIRECT ='OUT' ORDER BY GETDAT DESC"
+print(sql)
 df_log = pd.read_sql(sql, eng_mes)
 if len(df_log) > 0:
     LAST_OUTDAT = df_log['GETDAT'][0]
@@ -244,6 +246,7 @@ SELECT * FROM (
 	) PACK GROUP BY AUFNR,ZZTB_NO,GETDAT,DIRECT
 ) WHERE GETDAT IS NOT NULL ORDER BY GETDAT 
 '''
+print(sql)
 df_pda = pd.read_sql(sql, eng_sap)
 
 
