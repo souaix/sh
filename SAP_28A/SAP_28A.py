@@ -8,6 +8,7 @@ import pyodbc
 import requests
 import time
 import calendar
+import logging
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -21,6 +22,11 @@ eng_mes = cc.connect('MES', 'MES_Production')
 # con_cim = cc.connect('CIM', 'SAP_WKTIME')
 eng_sap = cc.connect('SAP', 'SAP_PRD')
 cur = eng_sap.cursor()
+
+# logging
+import global_fun.logging_fun as logfun
+#開啟log
+logfun.set_logging('/home/cim/log/SAP_INOUT_STOCK')
 
 DB = "MES_Production"
 # DB = "MES_Test"
@@ -115,6 +121,8 @@ for i,v in enumerate(aufnr_list):
 
     try:
         sql_val(sql, df_28A, cur, eng_sap)
+        logging.info(v+":into 28A success!")
+
     except:
         df_fail["AUFNR"]=[v]
         df_fail['GETDAT']=[now]
@@ -123,12 +131,16 @@ for i,v in enumerate(aufnr_list):
         df_fail['NODE']=['28A']
         df_fail.to_sql('TH_SAPSTOCK_LOG', con=eng_mes,
                              if_exists='append', index=False)                        
+        logging.info(v+":into 28A fail!")
+
 
     cols = df_28B1.columns.tolist()
     sql = sql_str('thsap.ZPPT0028B1', cols)
 
     try:
         sql_val(sql, df_28B1, cur, eng_sap)
+        logging.info(v+":into 28B1 success!")
+
     except:
         df_fail["AUFNR"]=[v]
         df_fail['GETDAT']=[now]
@@ -137,6 +149,7 @@ for i,v in enumerate(aufnr_list):
         df_fail['NODE']=['28B']
         df_fail.to_sql('TH_SAPSTOCK_LOG', con=eng_mes,
                              if_exists='append', index=False)                
+        logging.info(v+":into 28B1 fail!")
         
         
     
