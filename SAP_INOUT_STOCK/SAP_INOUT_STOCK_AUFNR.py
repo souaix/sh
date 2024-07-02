@@ -1,4 +1,3 @@
-\
 import sys
 import datetime
 import pymssql
@@ -198,243 +197,244 @@ else:
 sql = "SELECT PARAMETERVALUE FROM TBLSYSPARAMETER WHERE PARAMETERNO = 'SAP_MANDT'"
 MANDT = pd.read_sql(sql, eng_mes)["PARAMETERVALUE"][0]
 
-AUFNR_='003000017830'
+#AUFNR_='003900002053'
+AUFNRs = ['003000021586','003000021590']
+
+for i,AUFNR_ in enumerate(AUFNRs):
+    #取PDA入庫 + 退庫
+    sql = '''
+    	SELECT AUFNR,ZZTB_NO,PDADAT AS GETDAT,DIRECT FROM 
+    	(
+    		SELECT B2.*,A.ZZTB_NO,A.ZZCUST_LOT,STSTYP,OUT_IDBSNO,(CASE WHEN OUT_IDBSNO IS NOT NULL THEN 'IN_OUT' ELSE 'IN' END) AS DIRECT  FROM
+    		(SELECT IDBSNO,WERKS,AUFNR,MATNR,GRSNO,PDADAT FROM SAPS4.ZPPT0026B2 WHERE  PDASTSTYP ='F' 
+            AND MANDT =\''''+MANDT+'''' AND WERKS='1031') B2
+    		LEFT JOIN 
+    		(SELECT * FROM THSAP.ZPPT0026A) A
+    		ON B2.IDBSNO=A.IDBSNO AND B2.AUFNR=A.AUFNR AND B2.MATNR=A.MATNR AND B2.GRSNO=A.GRSNO
+    		LEFT JOIN 
+    		(SELECT AUFNR,STSTYP FROM SAPS4.ZPPT0024D1 WHERE WERKS='1031') D124
+    		ON B2.AUFNR=D124.AUFNR
+    		LEFT JOIN
+    		(SELECT IDBSNO AS OUT_IDBSNO FROM SAPS4.ZPPT0027A WHERE WERKS='1031') A27
+    		ON B2.IDBSNO=A27.OUT_IDBSNO
+    		WHERE ZZTB_NO IS NOT NULL AND (STSTYP <> 'D' OR STSTYP IS NULL)  AND B2.AUFNR =\''''+AUFNR_+''''
+    	) PACK GROUP BY ZZTB_NO,ZZCUST_LOT,AUFNR,PDADAT,DIRECT
+    '''
+    df_pda = pd.read_sql(sql, eng_sap)
 
 
-#取PDA入庫 + 退庫
-sql = '''
-	SELECT AUFNR,ZZTB_NO,PDADAT AS GETDAT,DIRECT FROM 
-	(
-		SELECT B2.*,A.ZZTB_NO,A.ZZCUST_LOT,STSTYP,OUT_IDBSNO,(CASE WHEN OUT_IDBSNO IS NOT NULL THEN 'IN_OUT' ELSE 'IN' END) AS DIRECT  FROM
-		(SELECT IDBSNO,WERKS,AUFNR,MATNR,GRSNO,PDADAT FROM SAPS4.ZPPT0026B2 WHERE  PDASTSTYP ='F' 
-        AND MANDT =\''''+MANDT+'''' AND WERKS='1031') B2
-		LEFT JOIN 
-		(SELECT * FROM THSAP.ZPPT0026A) A
-		ON B2.IDBSNO=A.IDBSNO AND B2.AUFNR=A.AUFNR AND B2.MATNR=A.MATNR AND B2.GRSNO=A.GRSNO
-		LEFT JOIN 
-		(SELECT AUFNR,STSTYP FROM SAPS4.ZPPT0024D1 WHERE WERKS='1031') D124
-		ON B2.AUFNR=D124.AUFNR
-		LEFT JOIN
-		(SELECT IDBSNO AS OUT_IDBSNO FROM SAPS4.ZPPT0027A WHERE WERKS='1031') A27
-		ON B2.IDBSNO=A27.OUT_IDBSNO
-		WHERE ZZTB_NO IS NOT NULL AND (STSTYP <> 'D' OR STSTYP IS NULL)  AND B2.AUFNR =\''''+AUFNR_+''''
-	) PACK GROUP BY ZZTB_NO,ZZCUST_LOT,AUFNR,PDADAT,DIRECT
-'''
-df_pda = pd.read_sql(sql, eng_sap)
+
+    if(len(df_pda) > 0):
+
+        # 要刪除重複退庫資料
+        # 先拆解
+        IN = df_pda[df_pda['DIRECT'] == 'IN']
+        OUT = df_pda[df_pda['DIRECT'] == 'OUT']
+        INOUT = df_pda[df_pda['DIRECT'] == 'IN_OUT']
+        INOUT_MERGE = INOUT.merge(OUT, on=["AUFNR"], how='left')
+
+        # 刪除的主程式
+
+        df_pda_del_out = pd.DataFrame(
+            columns=['AUFNR', 'ZZTB_NO', 'GETDAT', 'DIRECT'])
+        for i in range(1, len(INOUT_MERGE)+1):
+            OUT_ = INOUT_MERGE.iloc[i-1:i]
+            if(OUT_["DIRECT_y"].iloc[0] == "OUT"):
+                if(OUT_["GETDAT_y"].iloc[0] > OUT_["GETDAT_x"].iloc[0]):
+                    OUT_ = OUT_[['AUFNR', 'ZZTB_NO_y', 'GETDAT_y', 'DIRECT_y']]
+                    OUT_ = OUT_.rename(
+                        columns={'ZZTB_NO_y': 'ZZTB_NO', 'GETDAT_y': 'GETDAT', 'DIRECT_y': 'DIRECT'})
+                    df_pda_del_out = pd.concat([df_pda_del_out, OUT_])
+
+        # 重構
+        OUT = pd.concat([OUT, df_pda_del_out, df_pda_del_out]
+                        ).drop_duplicates(keep=False)
+        df_pda = pd.concat([IN, OUT, INOUT])
+        df_pda = df_pda.sort_values(by=['GETDAT'], ascending=True)
+        df_pda.reset_index(inplace=True)
+
+    ###############
+
+        # In[8]:
+
+        #MES入庫XML
+        df_success_in = pd.DataFrame(
+            columns=['AUFNR', 'ZZTB_NO', 'ZZCUST_LOT', 'GETDAT', 'STATUS', 'DIRECT', 'NODE'])
+        df_fail_in = pd.DataFrame(
+            columns=['AUFNR', 'ZZTB_NO', 'ZZCUST_LOT', 'GETDAT', 'STATUS', 'DIRECT', 'NODE'])
+        df_success_out = pd.DataFrame(
+            columns=['AUFNR', 'ZZTB_NO', 'ZZCUST_LOT', 'GETDAT', 'STATUS', 'DIRECT', 'NODE'])
+        df_fail_out = pd.DataFrame(
+            columns=['AUFNR', 'ZZTB_NO', 'ZZCUST_LOT', 'GETDAT', 'STATUS', 'DIRECT', 'NODE'])
+
+        ARDY_IN = []
+
+        # MES包裝入庫+退庫拋送
+        for i in range(0, len(df_pda)):
+            aufnr = df_pda["AUFNR"][i]
+            boxno = df_pda["ZZTB_NO"][i]
+            direct = df_pda["DIRECT"][i]
+        #     fgdinno = df_pda["ZZCUST_LOT"][i]
+            fgdinno = aufnr
+
+            print(aufnr)
+            # 入庫又退庫
+            if direct == 'IN_OUT':
+                # IN
+                xml_data = finishgoodsin_xml(boxno, fgdinno)
+                code = send_xml(xml_data)
+
+                # 紀錄最後成功筆數>>下次撈取的時間區間
+                if code == 200:
+                    print(aufnr+":"+boxno+"--XML入庫SUCCESS")
+                    logging.info(aufnr+":"+boxno+"--XML入庫SUCCESS")
+
+                    df_success_in_ = df_pda[df_pda["ZZTB_NO"] == boxno]
+                    df_success_in_ = df_success_in_.copy()
+                    df_success_in_["NODE"] = "XML"
+                    df_success_in = pd.concat([df_success_in, df_success_in_])
+
+                # 紀錄失敗資料>>下次撈取的時間區間
+                else:
+                    print(aufnr+":"+boxno+"--XML入庫FAIL")
+                    loggin.info(aufnr+":"+boxno+"--XML入庫FAIL")
+
+                    df_fail_in_ = df_pda[df_pda["ZZTB_NO"] == boxno]
+                    df_fail_in_ = df_fail_in_.copy()
+                    df_fail_in_["NODE"] = "XML"
+                    df_fail_in = pd.concat([df_fail_in, df_fail_in_])
+
+                # 休息一下
+                time.sleep(1)
+
+                # OUT
+                xml_data = finishgoodsout_xml(fgdinno)
+                code = send_xml(xml_data)
+
+                # 紀錄最後成功筆數>>下次撈取的時間區間
+                if code == 200:
+
+                    print(aufnr+":"+str(boxno)+"--XML退庫SUCCESS")
+                    logging.info(aufnr+":"+str(boxno)+"--XML退庫SUCCESS")
 
 
+                    df_success_out_ = df_pda[df_pda["AUFNR"] == fgdinno]
+                    df_success_out_ = df_success_out_.copy()
+                    df_success_out_["NODE"] = "XML"
+                    df_success_out = pd.concat([df_success_out, df_success_out_])
 
-if(len(df_pda) > 0):
+                # 紀錄失敗資料>>下次撈取的時間區間
+                else:
+                    print(aufnr+":"+boxno+"--XML退庫FAIL")
+                    logging.info(aufnr+":"+boxno+"--XML退庫FAIL")
 
-    # 要刪除重複退庫資料
-    # 先拆解
-    IN = df_pda[df_pda['DIRECT'] == 'IN']
-    OUT = df_pda[df_pda['DIRECT'] == 'OUT']
-    INOUT = df_pda[df_pda['DIRECT'] == 'IN_OUT']
-    INOUT_MERGE = INOUT.merge(OUT, on=["AUFNR"], how='left')
 
-    # 刪除的主程式
+                    df_fail_out_ = df_pda[df_pda["ZZTB_NO"] == boxno]
+                    df_fail_out_ = df_fail_out_.copy()
+                    df_fail_out_["NODE"] = "XML"
+                    df_fail_out = pd.concat([df_fail_out, df_fail_out_])
 
-    df_pda_del_out = pd.DataFrame(
-        columns=['AUFNR', 'ZZTB_NO', 'GETDAT', 'DIRECT'])
-    for i in range(1, len(INOUT_MERGE)+1):
-        OUT_ = INOUT_MERGE.iloc[i-1:i]
-        if(OUT_["DIRECT_y"].iloc[0] == "OUT"):
-            if(OUT_["GETDAT_y"].iloc[0] > OUT_["GETDAT_x"].iloc[0]):
-                OUT_ = OUT_[['AUFNR', 'ZZTB_NO_y', 'GETDAT_y', 'DIRECT_y']]
-                OUT_ = OUT_.rename(
-                    columns={'ZZTB_NO_y': 'ZZTB_NO', 'GETDAT_y': 'GETDAT', 'DIRECT_y': 'DIRECT'})
-                df_pda_del_out = pd.concat([df_pda_del_out, OUT_])
+            # 入庫
+            elif direct == 'IN':
 
-    # 重構
-    OUT = pd.concat([OUT, df_pda_del_out, df_pda_del_out]
-                    ).drop_duplicates(keep=False)
-    df_pda = pd.concat([IN, OUT, INOUT])
-    df_pda = df_pda.sort_values(by=['GETDAT'], ascending=True)
-    df_pda.reset_index(inplace=True)
+                xml_data = finishgoodsin_xml(boxno, fgdinno)
+                code = send_xml(xml_data)
 
-###############
+                # 紀錄最後成功筆數>>下次撈取的時間區間
+                if code == 200:
 
-    # In[8]:
+                    print(aufnr+":"+boxno+"--XML入庫SUCCESS")
+                    logging.info(aufnr+":"+boxno+"--XML入庫SUCCESS")
 
-    #MES入庫XML
-    df_success_in = pd.DataFrame(
-        columns=['AUFNR', 'ZZTB_NO', 'ZZCUST_LOT', 'GETDAT', 'STATUS', 'DIRECT', 'NODE'])
-    df_fail_in = pd.DataFrame(
-        columns=['AUFNR', 'ZZTB_NO', 'ZZCUST_LOT', 'GETDAT', 'STATUS', 'DIRECT', 'NODE'])
-    df_success_out = pd.DataFrame(
-        columns=['AUFNR', 'ZZTB_NO', 'ZZCUST_LOT', 'GETDAT', 'STATUS', 'DIRECT', 'NODE'])
-    df_fail_out = pd.DataFrame(
-        columns=['AUFNR', 'ZZTB_NO', 'ZZCUST_LOT', 'GETDAT', 'STATUS', 'DIRECT', 'NODE'])
+                    df_success_in_ = df_pda[df_pda["ZZTB_NO"] == boxno]
+                    df_success_in_ = df_success_in_.copy()
+                    df_success_in_["NODE"] = "XML"
+                    df_success_in = pd.concat([df_success_in, df_success_in_])
 
-    ARDY_IN = []
 
-    # MES包裝入庫+退庫拋送
-    for i in range(0, len(df_pda)):
-        aufnr = df_pda["AUFNR"][i]
-        boxno = df_pda["ZZTB_NO"][i]
-        direct = df_pda["DIRECT"][i]
-    #     fgdinno = df_pda["ZZCUST_LOT"][i]
-        fgdinno = aufnr
+                # 紀錄XML失敗資料>>下次撈取的時間區間
+                else:
+                    print(aufnr+":"+boxno+"--XML入庫FAIL")
+                    logging.info(aufnr+":"+boxno+"--XML入庫FAIL")
 
-        print(aufnr)
-        # 入庫又退庫
-        if direct == 'IN_OUT':
-            # IN
-            xml_data = finishgoodsin_xml(boxno, fgdinno)
-            code = send_xml(xml_data)
 
-            # 紀錄最後成功筆數>>下次撈取的時間區間
-            if code == 200:
-                print(aufnr+":"+boxno+"--XML入庫SUCCESS")
-                logging.info(aufnr+":"+boxno+"--XML入庫SUCCESS")
+                    df_fail_in_ = df_pda[df_pda["ZZTB_NO"] == boxno]
+                    df_fail_in_ = df_fail_in_.copy()
+                    df_fail_in_["NODE"] = "XML"
+                    df_fail_in = pd.concat([df_fail_in, df_fail_in_])
 
-                df_success_in_ = df_pda[df_pda["ZZTB_NO"] == boxno]
-                df_success_in_ = df_success_in_.copy()
-                df_success_in_["NODE"] = "XML"
-                df_success_in = pd.concat([df_success_in, df_success_in_])
-
-            # 紀錄失敗資料>>下次撈取的時間區間
+            # 退庫
             else:
-                print(aufnr+":"+boxno+"--XML入庫FAIL")
-                loggin.info(aufnr+":"+boxno+"--XML入庫FAIL")
+                xml_data = finishgoodsout_xml(fgdinno)
+                code = send_xml(xml_data)
 
-                df_fail_in_ = df_pda[df_pda["ZZTB_NO"] == boxno]
-                df_fail_in_ = df_fail_in_.copy()
-                df_fail_in_["NODE"] = "XML"
-                df_fail_in = pd.concat([df_fail_in, df_fail_in_])
-
-            # 休息一下
-            time.sleep(1)
-
-            # OUT
-            xml_data = finishgoodsout_xml(fgdinno)
-            code = send_xml(xml_data)
-
-            # 紀錄最後成功筆數>>下次撈取的時間區間
-            if code == 200:
-
-                print(aufnr+":"+str(boxno)+"--XML退庫SUCCESS")
-                logging.info(aufnr+":"+str(boxno)+"--XML退庫SUCCESS")
+                # 紀錄最後成功筆數>>下次撈取的時間區間
+                if code == 200:
+                    print(aufnr+":"+str(boxno)+"--XML退庫SUCCESS")
+                    logging.info(aufnr+":"+str(boxno)+"--XML退庫SUCCESS")
 
 
-                df_success_out_ = df_pda[df_pda["AUFNR"] == fgdinno]
-                df_success_out_ = df_success_out_.copy()
-                df_success_out_["NODE"] = "XML"
-                df_success_out = pd.concat([df_success_out, df_success_out_])
+                    df_success_out_ = df_pda[df_pda["AUFNR"] == fgdinno]
+                    df_success_out_ = df_success_out_.copy()
+                    df_success_out_["NODE"] = "XML"
+                    df_success_out = pd.concat([df_success_out, df_success_out_])
 
-            # 紀錄失敗資料>>下次撈取的時間區間
-            else:
-                print(aufnr+":"+boxno+"--XML退庫FAIL")
-                logging.info(aufnr+":"+boxno+"--XML退庫FAIL")
+                # 紀錄失敗資料>>下次撈取的時間區間
+                else:
+                    print(aufnr+":"+boxno+"--XML退庫FAIL")
+                    logging.info(aufnr+":"+boxno+"--XML退庫FAIL")
 
+                    df_fail_out_ = df_pda[df_pda["AUFNR"] == fgdinno]
+                    df_fail_out_ = df_fail_out_.copy()
+                    df_fail_out_["NODE"] = "XML"
+                    df_fail_out = pd.concat([df_fail_out, df_fail_out_])
 
-                df_fail_out_ = df_pda[df_pda["ZZTB_NO"] == boxno]
-                df_fail_out_ = df_fail_out_.copy()
-                df_fail_out_["NODE"] = "XML"
-                df_fail_out = pd.concat([df_fail_out, df_fail_out_])
+        df_success_in["STATUS"] = 'SUCCESS'
+        df_fail_in["STATUS"] = 'FAIL'
+        df_success_out["STATUS"] = 'SUCCESS'
+        df_fail_out["STATUS"] = 'FAIL'
 
-        # 入庫
-        elif direct == 'IN':
+        df_success_in["DIRECT"] = 'IN'
+        df_fail_in["DIRECT"] = 'IN'
+        df_success_out["DIRECT"] = 'OUT'
+        df_fail_out["DIRECT"] = 'OUT'
 
-            xml_data = finishgoodsin_xml(boxno, fgdinno)
-            code = send_xml(xml_data)
+        # 成功的只留最後一筆
+        df_success_in = df_success_in[df_success_in["GETDAT"]
+                                      == df_success_in["GETDAT"].max()]
+        df_success_out = df_success_out[df_success_out["GETDAT"]
+                                        == df_success_out["GETDAT"].max()]
 
-            # 紀錄最後成功筆數>>下次撈取的時間區間
-            if code == 200:
+        try:
+            del df_success_in["index"]
+        except:
+            print('no index')
 
-                print(aufnr+":"+boxno+"--XML入庫SUCCESS")
-                logging.info(aufnr+":"+boxno+"--XML入庫SUCCESS")
+        try:
+            del df_success_out["index"]
+        except:
+            print('no index')
 
-                df_success_in_ = df_pda[df_pda["ZZTB_NO"] == boxno]
-                df_success_in_ = df_success_in_.copy()
-                df_success_in_["NODE"] = "XML"
-                df_success_in = pd.concat([df_success_in, df_success_in_])
+        now = datetime.datetime.now()
+        df_success_in["CIMEXEDAT"] = now
+        df_success_out["CIMEXEDAT"] = now
 
-
-            # 紀錄XML失敗資料>>下次撈取的時間區間
-            else:
-                print(aufnr+":"+boxno+"--XML入庫FAIL")
-                logging.info(aufnr+":"+boxno+"--XML入庫FAIL")
-
-
-                df_fail_in_ = df_pda[df_pda["ZZTB_NO"] == boxno]
-                df_fail_in_ = df_fail_in_.copy()
-                df_fail_in_["NODE"] = "XML"
-                df_fail_in = pd.concat([df_fail_in, df_fail_in_])
-
-        # 退庫
-        else:
-            xml_data = finishgoodsout_xml(fgdinno)
-            code = send_xml(xml_data)
-
-            # 紀錄最後成功筆數>>下次撈取的時間區間
-            if code == 200:
-                print(aufnr+":"+str(boxno)+"--XML退庫SUCCESS")
-                logging.info(aufnr+":"+str(boxno)+"--XML退庫SUCCESS")
-
-
-                df_success_out_ = df_pda[df_pda["AUFNR"] == fgdinno]
-                df_success_out_ = df_success_out_.copy()
-                df_success_out_["NODE"] = "XML"
-                df_success_out = pd.concat([df_success_out, df_success_out_])
-
-            # 紀錄失敗資料>>下次撈取的時間區間
-            else:
-                print(aufnr+":"+boxno+"--XML退庫FAIL")
-                logging.info(aufnr+":"+boxno+"--XML退庫FAIL")
-
-                df_fail_out_ = df_pda[df_pda["AUFNR"] == fgdinno]
-                df_fail_out_ = df_fail_out_.copy()
-                df_fail_out_["NODE"] = "XML"
-                df_fail_out = pd.concat([df_fail_out, df_fail_out_])
-
-    df_success_in["STATUS"] = 'SUCCESS'
-    df_fail_in["STATUS"] = 'FAIL'
-    df_success_out["STATUS"] = 'SUCCESS'
-    df_fail_out["STATUS"] = 'FAIL'
-
-    df_success_in["DIRECT"] = 'IN'
-    df_fail_in["DIRECT"] = 'IN'
-    df_success_out["DIRECT"] = 'OUT'
-    df_fail_out["DIRECT"] = 'OUT'
-
-    # 成功的只留最後一筆
-    df_success_in = df_success_in[df_success_in["GETDAT"]
-                                  == df_success_in["GETDAT"].max()]
-    df_success_out = df_success_out[df_success_out["GETDAT"]
-                                    == df_success_out["GETDAT"].max()]
-
-    try:
-        del df_success_in["index"]
-    except:
-        print('no index')
-
-    try:
-        del df_success_out["index"]
-    except:
-        print('no index')
-
-    now = datetime.datetime.now()
-    df_success_in["CIMEXEDAT"] = now
-    df_success_out["CIMEXEDAT"] = now
-
-    df_fail_in["CIMEXEDAT"] = now
-    df_fail_out["CIMEXEDAT"] = now
+        df_fail_in["CIMEXEDAT"] = now
+        df_fail_out["CIMEXEDAT"] = now
 
 
 
-    df_success_in.to_sql('TH_SAPSTOCK_LOG', con=eng_mes,
-                         if_exists='append', index=False)
-    df_success_out.to_sql('TH_SAPSTOCK_LOG', con=eng_mes,
+        df_success_in.to_sql('TH_SAPSTOCK_LOG', con=eng_mes,
+                             if_exists='append', index=False)
+        df_success_out.to_sql('TH_SAPSTOCK_LOG', con=eng_mes,
+                              if_exists='append', index=False)
+        df_fail_in.to_sql('TH_SAPSTOCK_LOG', con=eng_mes,
                           if_exists='append', index=False)
-    df_fail_in.to_sql('TH_SAPSTOCK_LOG', con=eng_mes,
-                      if_exists='append', index=False)
-    df_fail_out.to_sql('TH_SAPSTOCK_LOG', con=eng_mes,
-                       if_exists='append', index=False)
+        df_fail_out.to_sql('TH_SAPSTOCK_LOG', con=eng_mes,
+                           if_exists='append', index=False)
 
-else:
-    print('無終段工單入退庫資料')
+    else:
+        print('無終段工單入退庫資料')
 
 
 

@@ -329,6 +329,8 @@ if(len(df_pda) > 0):
             # 紀錄失敗資料>>下次撈取的時間區間
             else:
                 print(aufnr+":"+str(boxno)+"--XML入庫FAIL")
+                logging.info(aufnr+":"+str(boxno)+"--XML入庫FAIL")
+
                 df_fail_in_ = df_pda[df_pda["ZZTB_NO"] == boxno]
                 df_fail_in_ = df_fail_in_.copy()
                 df_fail_in_["NODE"] = sysmsg
@@ -345,7 +347,7 @@ if(len(df_pda) > 0):
             if code == 200 and result== 'success':
 
                 print(aufnr+":"+str(boxno)+"--XML退庫SUCCESS")
-                logging.info(aufnr+":"+str(boxno)+"--XML入庫SUCCESS")
+                logging.info(aufnr+":"+str(boxno)+"--XML退庫SUCCESS")
 
                 df_success_out_ = df_pda[df_pda["AUFNR"] == fgdinno]
                 df_success_out_ = df_success_out_.copy()
@@ -373,7 +375,7 @@ if(len(df_pda) > 0):
             if code == 200 and result== 'success':
 
                 print(aufnr+":"+str(boxno)+"--XML入庫SUCCESS")
-                logging.info(aufnr+":"+str(boxno)+"--XML退庫FAIL")
+                logging.info(aufnr+":"+str(boxno)+"--XML入庫SUCCESS")
 
 
                 df_success_in_ = df_pda[df_pda["ZZTB_NO"] == boxno]
@@ -400,7 +402,7 @@ if(len(df_pda) > 0):
             # 紀錄最後成功筆數>>下次撈取的時間區間
             if code == 200 and result== 'success':
                 print(aufnr+":"+str(boxno)+"--XML退庫SUCCESS")
-                logging.info(aufnr+":"+str(boxno)+"--XML入庫FAIL")
+                logging.info(aufnr+":"+str(boxno)+"--XML退庫SUCCESS")
 
                 df_success_out_ = df_pda[df_pda["AUFNR"] == fgdinno]
                 df_success_out_ = df_success_out_.copy()

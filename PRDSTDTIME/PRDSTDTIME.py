@@ -16,12 +16,11 @@ sys.path.append('/home/cim')
 
 # connector
 import connect.connect as cc
-DB = "MES_Test"
+DB = "MES_Production"
 eng_mes = cc.connect('MES', DB)
 
 
 
-#取PDA入庫 + 退庫
 sql = "SELECT * FROM VIEW_PRDSTDTIMESETTING WHERE KEEPIT ='1'"
 df = pd.read_sql(sql, eng_mes)
 
@@ -34,6 +33,7 @@ PRDLIST = list(set(df["PRODUCTNO"].tolist()))
 df_std = pd.DataFrame(columns=['PRODUCTNO','PRODUCTVERSION','AREANO','OPNO','EQUIPMENTNO','EQUIPMENTTYPE','STDUNITEMPTIME','STDUNITEQPTIME','COUNTEQPUNITQTY'
 ,'COUNTOPUNITQTY','STDQUEUETIME','CREATOR','CREATEDATE','FIXEMPTIMEA','VAREMPTIME','FIXEQPTIME','VAREQPTIME','WORKPRICETYPE','WORKPRICE'])
 
+
 for i in range(0,len(df)):    
     df_ =df[i:i+1]
     df_.reset_index(drop=True,inplace=True)
@@ -41,6 +41,7 @@ for i in range(0,len(df)):
     FRAMEDIE = df_["FRAMEDIE"][0]
     ProductSize = df_["ProductSize"][0]    
     STDUNITEQPTIME = eval(df_["FUNC"][0])
+    #STDUNITEQPTIME = df_["FUNC"][0]
     STDUNITEMPTIME = STDUNITEQPTIME / df_["MMR"][0]
     df_["STDUNITEQPTIME"] = STDUNITEQPTIME
     df_["STDUNITEMPTIME"] = STDUNITEMPTIME
@@ -99,4 +100,5 @@ for i in range(0,len(df)):
         
 df_std = df_std.fillna(0)        
 
+df_std.to_excel("final.xlsx",index=False)
 df_std.to_sql("TBLPRDRUNTIMESETUP",con=eng_mes,if_exists='append',index=False)

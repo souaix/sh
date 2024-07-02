@@ -76,7 +76,7 @@ def CLOSEMO(IDBSNO, AUFNR, MANDT):
 
 
 now = datetime.datetime.now()
-#now = datetime.datetime(2024,4,7,0,0,0)
+#now = datetime.datetime(2024,6,3,0,0,0)
 
 year = datetime.datetime.now().year
 month = datetime.datetime.now().month
