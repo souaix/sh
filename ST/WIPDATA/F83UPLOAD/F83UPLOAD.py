@@ -29,8 +29,8 @@ import global_fun.logging_fun as logfun
 logfun.set_logging('/home/cim/log/F83UPLOAD')
 
 now = datetime.datetime.now()
-#now = datetime.datetime(2024,4,7,0,0,0)
-hh = datetime.datetime.now().hour
+#now = datetime.datetime(2024,7,3,17,0,0)
+hh = now.hour
 
 localPATH = '/home/cim/'
 toPATH = '/home/cim/S/F83UPLOAD/'
@@ -49,7 +49,7 @@ if(hh==8):
     DATESTR = now.strftime('%Y%m%d')
     FILESTR = "996ZYield"+DATESTR+".csv"
     
-    sql = "EXECUTE "+DB+".dbo.[ST_S093B] @D1='" + BEGIN+"',@D2='"+END+"'"
+    sql = "EXECUTE "+DB+".dbo.[ST_S093B_0716] @D1='" + BEGIN+"',@D2='"+END+"'"
     #print(sql)
     df = pd.read_sql(sql, eng_mes)
     
@@ -98,7 +98,7 @@ if(hh==8):
     #寄信
     try:
         from datetime import date
-        thmail.thmail('f83yield','FYI',FILESTR,'[ST]-F83YIELD:'+format(str(date.today())))
+        thmail.thmail('f83yield','S:\F83UPLOAD',FILESTR,'[ST]-F83YIELD:'+format(str(date.today())))
     except Exception as e:
         logging.info("MAIL FAIL:"+str(e))
 
@@ -135,7 +135,7 @@ elif(hh==17):
                     #os.remove(localPATH+csvs)
                     logging.info("上傳成功")
                 except Exception as e:
-                    thmail.thmail('f83yield','F83 Yield上拋失敗，請聯繫IT處理',toPATH+csvs,'[ST]-F83YIELD FAIL:'+format(str(date.today())))
+                    thmail.thmail('f83yield','F83 Yield上拋失敗，請聯繫IT處理:'+str(e),toPATH+csvs,'[ST]-F83YIELD FAIL:'+format(str(date.today())))
                     logging.info(str(e))
                     
 

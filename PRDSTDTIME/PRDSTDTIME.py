@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 import pyodbc
 import requests
 import time
-
+import numpy as np
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -99,6 +99,7 @@ for i in range(0,len(df)):
         df_std = pd.concat([df_std,df_])    
         
 df_std = df_std.fillna(0)        
+df_std.replace([np.inf, -np.inf], 0, inplace=True)
 
 df_std.to_excel("final.xlsx",index=False)
 df_std.to_sql("TBLPRDRUNTIMESETUP",con=eng_mes,if_exists='append',index=False)
